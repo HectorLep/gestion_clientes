@@ -9,7 +9,7 @@ Aplicación empresarial en Flutter desarrollada en pareja para la **ACTIVIDAD 2*
 | Miembro     | GitHub |
 |------------|--------|
 | Héctor Lep | https://github.com/HectorLep |
-| Compañero  | https://github.com/sonickiller39 |
+| Agustín Vega  | https://github.com/sonickiller39 |
 
 ---
 
