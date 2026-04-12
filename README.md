@@ -1,4 +1,4 @@
-# Gestión de Clientes UCT - AVANCE 60%
+# Gestión de Clientes UCT
 
 Aplicación empresarial en Flutter desarrollada en pareja para la **ACTIVIDAD 2** - Sistema de registro de clientes.
 
@@ -13,65 +13,60 @@ Aplicación empresarial en Flutter desarrollada en pareja para la **ACTIVIDAD 2*
 
 ---
 
-## 🎯 Problema resuelto
+## 🎯 Descripción
 
-Sistema completo de registro de clientes que permite:
+Sistema de registro de clientes que permite:
 
 - Ingresar datos de clientes  
 - Almacenarlos localmente  
 - Consultarlos, buscarlos y ordenarlos  
+- Editar información  
+- Gestionar estado (activo/inactivo)  
+- Exportar datos a CSV  
 
 ---
 
-## ✅ Funcionalidades implementadas (60%+)
+## ✅ Funcionalidades
 
-| Feature                         | Estado |
-|---------------------------------|--------|
-| Registro de clientes            | ✅ |
-| Listado completo                | ✅ |
-| Búsqueda (debounce)             | ✅ |
-| Orden por nombre/fecha          | ✅ |
-| Editar clientes                 | ✅ |
-| Soft delete (baja/reactivar)    | ✅ |
-| Export CSV (Web/Desktop)        | ✅ |
-| Validación RUT módulo 11        | ✅ |
-| Formateo RUT en tiempo real     | ✅ |
-| Pruebas unitarias               | ✅ |
+- Registro de clientes  
+- Listado completo  
+- Búsqueda optimizada (debounce)  
+- Orden por nombre y fecha  
+- Edición de clientes  
+- Soft delete (baja/reactivar)  
+- Exportación a CSV (Web/Desktop)  
+- Validación de RUT (módulo 11)  
+- Formateo de RUT en tiempo real  
+- Pruebas unitarias  
 
 ---
 
-## 🏗️ Arquitectura modular
+## 🏗️ Arquitectura
 
 ```text
 lib/
 ├── models/
-│   └── cliente.dart
 ├── repositories/
-│   └── cliente_repositorio.dart
 ├── services/
-│   └── csv_service.dart
 ├── utils/
-│   ├── validadores.dart
-│   └── rut_formatter.dart
 ├── pages/
-│   └── registro_clientes_page.dart
 └── widgets/
 ```
 
-**Persistencia:** SharedPreferences (listo para SQLite)  
-**Multiplataforma:** Web + Escritorio  
+**Persistencia:** SharedPreferences (escalable a SQLite)  
+**Plataformas:** Web y Escritorio  
 
 ---
 
-## 🔒 Seguridad crítica
+## 🔒 Seguridad
 
 - Protección contra CSV Injection (`=`, `+`, `-`, `@`)
-- Validación de RUT módulo 11
+- Validación de RUT (módulo 11)
 - Unicidad de RUT y email
 
 ---
 
-## 🧪 Pruebas incluidas
+## 🧪 Testing
 
 ```bash
 flutter test
@@ -79,7 +74,7 @@ flutter test
 
 ---
 
-## 🚀 Instalación rápida
+## 🚀 Instalación
 
 ```bash
 git clone https://github.com/HectorLep/gestion_clientes.git
@@ -90,48 +85,13 @@ flutter run
 
 ---
 
-## 📱 Demo funcionalidades
+## 📸 Demo
 
-Video demo: **[Enlace al video]** (máximo 3 min)
-
-**Flujo:**
-1. Registrar cliente  
-2. Buscar cliente  
-3. Dar de baja  
-4. Exportar CSV  
+*(Agregar enlace o capturas aquí cuando estén disponibles)*
 
 ---
 
-## 📋 Próximas entregas (domingo 19)
+## 🎓 Contexto
 
-- Informe PDF completo  
-- Video explicativo (5 min)  
-- Capturas de pantalla  
-- Mejoras UX  
-
----
-
-## 🎓 Contexto académico
-
-**ACTIVIDAD 2** - Ingeniería Civil en Informática UCT  
-**Propuesta:** Sistema de registro de clientes  
-**Estado:** **AVANCE 60% - FUNCIONAL**
-
----
-
-Héctor Lep + sonickiller39  
-Universidad Católica de Temuco  
-
----
-
-## ⚙️ Instrucciones rápidas
-
-1. Copia este archivo en `README.md`
-2. Cambia el link del video cuando lo subas
-3. Ejecuta:
-
-```bash
-git add README.md
-git commit -m "docs: README avance 60% con colaborador"
-git push
-```
+Proyecto desarrollado para la asignatura de Ingeniería Civil en Informática  
+Universidad Católica de Temuco
