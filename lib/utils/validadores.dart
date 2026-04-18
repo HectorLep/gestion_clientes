@@ -18,7 +18,8 @@ class Validadores {
   static String? validarRut(String raw) {
     if (raw.trim().isEmpty) return 'El RUT es obligatorio.';
     final rut = normalizarRut(raw);
-    if (!RegExp(r'^[0-9Kk]+$').hasMatch(rut)) return 'Caracteres no permitidos.';
+    if (rut.length < 2) return 'RUT inválido.';
+    if (!RegExp(r'^\d+[0-9Kk]$').hasMatch(rut)) return 'Caracteres no permitidos en el RUT.';
     if (rut.length < 7) return 'RUT demasiado corto.';
     if (rut.length > 9) return 'RUT demasiado largo.';
     if (!_modulo11(rut)) return 'Dígito verificador inválido (módulo 11).';
@@ -35,22 +36,57 @@ class Validadores {
     return null;
   }
 
+  static String? validarTelefono(String raw) {
+    final tel = raw.trim();
+    if (tel.isEmpty) return null;
+    final limpio = tel.replaceAll(RegExp(r'[\s\-\+\(\)]'), '');
+    if (!RegExp(r'^\d{7,15}$').hasMatch(limpio)) {
+      return 'Teléfono inválido (7–15 dígitos).';
+    }
+    return null;
+  }
+
+  static String? validarDireccion(String raw) {
+    final dir = raw.trim();
+    if (dir.isEmpty) return null;
+    if (dir.length < 5) return 'Dirección demasiado corta.';
+    if (dir.length > 150) return 'Máximo 150 caracteres.';
+    return null;
+  }
+
+  static String? validarNotas(String raw) {
+    if (raw.trim().length > 300) return 'Máximo 300 caracteres.';
+    return null;
+  }
+
+  /// Elimina puntos, guiones y espacios; dígito verificador en MAYÚSCULA.
   static String normalizarRut(String raw) =>
       raw.trim().toUpperCase().replaceAll('.', '').replaceAll('-', '').replaceAll(' ', '');
 
   static bool _modulo11(String rut) {
     if (rut.length < 2) return false;
-    final dv = rut[rut.length - 1];
+    final dvIngresado = rut[rut.length - 1]; // ya viene en MAYÚSCULA por normalizarRut
     final cuerpo = rut.substring(0, rut.length - 1);
-    int suma = 0, mul = 2;
+
+    int suma = 0;
+    int mul = 2;
     for (int i = cuerpo.length - 1; i >= 0; i--) {
       final d = int.tryParse(cuerpo[i]);
       if (d == null) return false;
       suma += d * mul;
       mul = (mul == 7) ? 2 : mul + 1;
     }
-    final res = 11 - (suma % 11);
-    final dvE = res == 11 ? '0' : (res == 10 ? 'K' : res.toString());
-    return dv == dvE;
+
+    final resultado = 11 - (suma % 11);
+    final String dvEsperado;
+    if (resultado == 11) {
+      dvEsperado = '0';
+    } else if (resultado == 10) {
+      dvEsperado = 'K'; // K siempre en mayúscula
+    } else {
+      dvEsperado = resultado.toString();
+    }
+
+    return dvIngresado == dvEsperado;
   }
 }

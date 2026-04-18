@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-
+import '../controllers/clientes_controller.dart';
 import '../models/cliente.dart';
-import '../repositories/cliente_repositorio.dart';
+import '../models/tipo_cliente.dart';
 import '../services/csv_service.dart';
 import '../utils/validadores.dart';
 import '../widgets/buscador_field.dart';
@@ -10,8 +10,6 @@ import '../widgets/estado_vacio.dart';
 import '../widgets/lista_clientes.dart';
 import '../widgets/panel_formulario.dart';
 import '../widgets/stats_row.dart';
-
-enum OrdenClientes { nombre, fechaReciente }
 
 class RegistroClientesPage extends StatefulWidget {
   const RegistroClientesPage({super.key});
@@ -21,287 +19,100 @@ class RegistroClientesPage extends StatefulWidget {
 }
 
 class _RegistroClientesPageState extends State<RegistroClientesPage> {
-  List<Cliente> _clientes = [];
-  List<Cliente> _filtrados = [];
-  bool _cargando = true;
-  bool _mostrarInactivos = true;
+  late final ClientesController _ctrl;
 
-  final _nombreCtrl = TextEditingController();
-  final _rutCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _searchCtrl = TextEditingController();
+  final _formKey       = GlobalKey<FormState>();
+  final _nombreCtrl    = TextEditingController();
+  final _rutCtrl       = TextEditingController();
+  final _emailCtrl     = TextEditingController();
+  final _telefonoCtrl  = TextEditingController();
+  final _direccionCtrl = TextEditingController();
+  final _notasCtrl     = TextEditingController();
+  final _searchCtrl    = TextEditingController();
 
-  String? _errorNombre;
-  String? _errorRut;
-  String? _errorEmail;
-  String? _editandoRut;
+  String?     _rutPreview;
+  String?     _editandoRut;
+  TipoCliente _tipoSeleccionado = TipoCliente.nuevo;
+  Timer?      _debounce;
 
-  Timer? _debounce;
-  OrdenClientes _ordenActual = OrdenClientes.fechaReciente;
+  bool get _modoEdicion => _editandoRut != null;
 
-  final _repo = ClienteRepositorio();
+  // ─────────────────────────────── lifecycle ───────────────────────────────
 
   @override
   void initState() {
     super.initState();
-    _cargarClientes();
+    _ctrl = ClientesController();
+    _ctrl.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _ctrl.inicializar();
     _searchCtrl.addListener(_onSearchChanged);
+    _rutCtrl.addListener(_actualizarRutPreview);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _nombreCtrl.dispose();
-    _rutCtrl.dispose();
-    _emailCtrl.dispose();
-    _searchCtrl.dispose();
+    _ctrl.dispose();
+    for (final c in [
+      _nombreCtrl, _rutCtrl, _emailCtrl,
+      _telefonoCtrl, _direccionCtrl, _notasCtrl, _searchCtrl,
+    ]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  bool get _modoEdicion => _editandoRut != null;
+  // ─────────────────────────────── helpers ─────────────────────────────────
 
-  Future<void> _cargarClientes() async {
-    final lista = await _repo.cargarTodos();
-    if (!mounted) return;
-    setState(() {
-      _clientes = lista;
-      _cargando = false;
-    });
-    _aplicarFiltros();
-  }
-
-  Future<void> _guardarClientes() async {
-    try {
-      await _repo.guardarTodos(_clientes);
-    } catch (_) {
-      _notificar('Error al guardar — almacenamiento lleno', Colors.red);
+  void _actualizarRutPreview() {
+    final rut = Validadores.normalizarRut(_rutCtrl.text);
+    if (rut.length >= 7 && Validadores.validarRut(_rutCtrl.text) == null) {
+      final preview = Cliente(
+        nombre: '', rut: rut, email: '',
+        fechaRegistro: DateTime.now(),
+        ultimaModificacion: DateTime.now(),
+      );
+      setState(() => _rutPreview = '✓ ${preview.rutFormateado}');
+    } else {
+      setState(() => _rutPreview = null);
     }
   }
 
   void _onSearchChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), _aplicarFiltros);
+    _debounce = Timer(
+      const Duration(milliseconds: 300),
+      () => _ctrl.setBusqueda(_searchCtrl.text),
+    );
   }
 
-  void _aplicarOrden(List<Cliente> lista) {
-    switch (_ordenActual) {
-      case OrdenClientes.nombre:
-        lista.sort((a, b) => a.nombre.compareTo(b.nombre));
-        break;
-      case OrdenClientes.fechaReciente:
-        lista.sort((a, b) => b.fechaRegistro.compareTo(a.fechaRegistro));
-        break;
+  void _limpiarFormulario() {
+    _formKey.currentState?.reset();
+    for (final c in [
+      _nombreCtrl, _rutCtrl, _emailCtrl,
+      _telefonoCtrl, _direccionCtrl, _notasCtrl,
+    ]) {
+      c.clear();
     }
-  }
-
-  void _aplicarFiltros() {
-    final q = _searchCtrl.text.toLowerCase().trim();
-
-    final base = _mostrarInactivos
-        ? List<Cliente>.from(_clientes)
-        : _clientes.where((c) => c.activo).toList();
-
-    final filtrada = q.isEmpty
-        ? base
-        : base.where((c) {
-            return c.nombre.toLowerCase().contains(q) ||
-                c.rut.contains(q) ||
-                c.rutFormateado.toLowerCase().contains(q) ||
-                c.email.toLowerCase().contains(q);
-          }).toList();
-
-    _aplicarOrden(filtrada);
-
     setState(() {
-      _filtrados = filtrada;
+      _rutPreview       = null;
+      _editandoRut      = null;
+      _tipoSeleccionado = TipoCliente.nuevo;
     });
   }
 
   void _iniciarEdicion(Cliente c) {
     setState(() {
-      _editandoRut = c.rut;
-      _nombreCtrl.text = c.nombre;
-      _emailCtrl.text = c.email;
-      _rutCtrl.text = c.rutFormateado;
-      _errorNombre = null;
-      _errorRut = null;
-      _errorEmail = null;
-    });
-  }
-
-  void _cancelarEdicion() {
-    setState(() {
-      _editandoRut = null;
-      _nombreCtrl.clear();
-      _rutCtrl.clear();
-      _emailCtrl.clear();
-      _errorNombre = null;
-      _errorRut = null;
-      _errorEmail = null;
-    });
-  }
-
-  void _guardarFormulario() async {
-    if (_modoEdicion) {
-      await _actualizarCliente();
-    } else {
-      await _registrarCliente();
-    }
-  }
-
-  Future<void> _registrarCliente() async {
-    final errNombre = Validadores.validarNombre(_nombreCtrl.text);
-    final errRut = Validadores.validarRut(_rutCtrl.text);
-    final errEmail = Validadores.validarEmail(_emailCtrl.text);
-
-    setState(() {
-      _errorNombre = errNombre;
-      _errorRut = errRut;
-      _errorEmail = errEmail;
-    });
-
-    if (errNombre != null || errRut != null || errEmail != null) {
-      _notificar('Corrige los errores antes de continuar', Colors.orange);
-      return;
-    }
-
-    final nombre = _nombreCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
-    final rut = Validadores.normalizarRut(_rutCtrl.text);
-    final email = _emailCtrl.text.trim().toLowerCase();
-
-    if (_clientes.any((c) => c.rut == rut)) {
-      setState(() => _errorRut = 'Este RUT ya está registrado.');
-      _notificar('RUT duplicado', Colors.red);
-      return;
-    }
-
-    if (_clientes.any((c) => c.email.toLowerCase() == email)) {
-      setState(() => _errorEmail = 'Este email ya está registrado.');
-      _notificar('Email duplicado', Colors.red);
-      return;
-    }
-
-    final nombreNorm = nombre.toLowerCase();
-    if (_clientes.any((c) => c.nombre.toLowerCase() == nombreNorm)) {
-      final ok = await _confirmar(
-        titulo: 'Nombre duplicado',
-        mensaje: 'Ya existe "$nombre". ¿Registrar igualmente?',
-      );
-      if (!ok) return;
-    }
-
-    setState(() {
-      _clientes.add(
-        Cliente(
-          nombre: nombre,
-          rut: rut,
-          email: email,
-          fechaRegistro: DateTime.now(),
-          activo: true,
-        ),
-      );
-    });
-
-    _limpiarFormulario();
-    _aplicarFiltros();
-    await _guardarClientes();
-    _notificar('$nombre registrado correctamente', Colors.green);
-  }
-
-  Future<void> _actualizarCliente() async {
-    final errNombre = Validadores.validarNombre(_nombreCtrl.text);
-    final errEmail = Validadores.validarEmail(_emailCtrl.text);
-
-    setState(() {
-      _errorNombre = errNombre;
-      _errorEmail = errEmail;
-    });
-
-    if (errNombre != null || errEmail != null) {
-      _notificar('Corrige los errores antes de continuar', Colors.orange);
-      return;
-    }
-
-    final nombre = _nombreCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
-    final email = _emailCtrl.text.trim().toLowerCase();
-
-    if (_clientes.any((c) => c.rut != _editandoRut && c.email.toLowerCase() == email)) {
-      setState(() => _errorEmail = 'Este email ya está en uso por otro cliente.');
-      _notificar('Email duplicado', Colors.red);
-      return;
-    }
-
-    final idx = _clientes.indexWhere((c) => c.rut == _editandoRut);
-    if (idx == -1) return;
-
-    setState(() {
-      _clientes[idx] = _clientes[idx].copyWith(nombre: nombre, email: email);
-      _editandoRut = null;
-    });
-
-    _limpiarFormulario();
-    _aplicarFiltros();
-    await _guardarClientes();
-    _notificar('Cliente actualizado correctamente', Colors.green);
-  }
-
-  Future<void> _darDeBaja(Cliente cliente) async {
-    final ok = await _confirmar(
-      titulo: 'Dar de baja cliente',
-      mensaje: '¿Dar de baja a ${cliente.nombre} (${cliente.rutFormateado})?',
-      destructivo: true,
-    );
-    if (!ok) return;
-
-    final idx = _clientes.indexWhere((c) => c.rut == cliente.rut);
-    if (idx == -1) return;
-
-    setState(() {
-      _clientes[idx] = _clientes[idx].copyWith(activo: false);
-    });
-
-    _aplicarFiltros();
-    await _guardarClientes();
-    _notificar('Cliente dado de baja', Colors.orange);
-  }
-
-  Future<void> _reactivar(Cliente cliente) async {
-    final idx = _clientes.indexWhere((c) => c.rut == cliente.rut);
-    if (idx == -1) return;
-
-    setState(() {
-      _clientes[idx] = _clientes[idx].copyWith(activo: true);
-    });
-
-    _aplicarFiltros();
-    await _guardarClientes();
-    _notificar('Cliente reactivado', Colors.green);
-  }
-
-  Future<void> _exportarCSV() async {
-    if (_clientes.isEmpty) {
-      _notificar('No hay datos para exportar', Colors.orange);
-      return;
-    }
-
-    final resultado = await CsvService.exportarYDescargar(_clientes);
-    if (!mounted) return;
-
-    _notificar(
-      resultado == null ? 'No se pudo exportar el archivo' : 'CSV exportado correctamente',
-      resultado == null ? Colors.red : const Color(0xFF185FA5),
-    );
-  }
-
-  void _limpiarFormulario() {
-    _nombreCtrl.clear();
-    _rutCtrl.clear();
-    _emailCtrl.clear();
-    setState(() {
-      _errorNombre = null;
-      _errorRut = null;
-      _errorEmail = null;
-      _editandoRut = null;
+      _editandoRut         = c.rut;
+      _nombreCtrl.text     = c.nombre;
+      _emailCtrl.text      = c.email;
+      _rutCtrl.text        = c.rutFormateado;
+      _telefonoCtrl.text   = c.telefono;
+      _direccionCtrl.text  = c.direccion;
+      _notasCtrl.text      = c.notas;
+      _tipoSeleccionado    = c.tipo;
     });
   }
 
@@ -309,73 +120,228 @@ class _RegistroClientesPageState extends State<RegistroClientesPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      ..showSnackBar(SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ));
   }
 
-  Future<bool> _confirmar({
-    required String titulo,
-    required String mensaje,
-    bool destructivo = false,
-  }) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(titulo),
-            content: Text(mensaje),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                style: destructivo
-                    ? TextButton.styleFrom(foregroundColor: Colors.red)
-                    : null,
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Confirmar'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+  // ─────────────────────────────── acciones ────────────────────────────────
+
+  Future<void> _guardarFormulario() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _notificar('Corrige los errores marcados en rojo', Colors.orange);
+      return;
+    }
+
+    final bool estabaEditando = _modoEdicion;
+    final String? err;
+
+    if (estabaEditando) {
+      err = await _ctrl.actualizar(
+        rut:       _editandoRut!,
+        nombre:    _nombreCtrl.text,
+        email:     _emailCtrl.text,
+        telefono:  _telefonoCtrl.text,
+        direccion: _direccionCtrl.text,
+        notas:     _notasCtrl.text,
+        tipo:      _tipoSeleccionado,
+      );
+    } else {
+      err = await _ctrl.registrar(
+        nombre:    _nombreCtrl.text,
+        rutRaw:    _rutCtrl.text,
+        email:     _emailCtrl.text,
+        telefono:  _telefonoCtrl.text,
+        direccion: _direccionCtrl.text,
+        notas:     _notasCtrl.text,
+        tipo:      _tipoSeleccionado,
+      );
+    }
+
+    if (err != null) {
+      _notificar(err, Colors.red);
+      return;
+    }
+
+    _limpiarFormulario();
+    _notificar(
+      estabaEditando ? 'Cliente actualizado' : 'Cliente registrado',
+      Colors.green,
+    );
   }
+
+  Future<void> _darDeBaja(Cliente c) async {
+    String motivo = '';
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Dar de baja: ${c.nombre}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('RUT: ${c.rutFormateado}'),
+            const SizedBox(height: 12),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Motivo de baja (opcional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLength: 200,
+              onChanged: (v) => motivo = v,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Dar de baja'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+    await _ctrl.darDeBaja(c.rut, notas: motivo.isNotEmpty ? motivo : null);
+    _notificar('${c.nombre} dado de baja', Colors.orange);
+  }
+
+  Future<void> _reactivar(Cliente c) async {
+    await _ctrl.reactivar(c.rut);
+    _notificar('${c.nombre} reactivado', Colors.green);
+  }
+
+  Future<void> _exportarCSV({TipoCliente? filtroTipo}) async {
+    if (_ctrl.todos.isEmpty) {
+      _notificar('No hay datos para exportar', Colors.orange);
+      return;
+    }
+    final resultado = await CsvService.exportar(
+      _ctrl.todos,
+      filtroTipo: filtroTipo,
+    );
+    if (!mounted) return;
+    _notificar(
+      resultado == null ? 'No se pudo exportar' : 'CSV exportado: $resultado',
+      resultado == null ? Colors.red : const Color(0xFF1A5C9A),
+    );
+  }
+
+  Future<void> _confirmarLimpiarBD() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('⚠️ Limpiar base de datos'),
+        content: const Text(
+          'Esta acción eliminará TODOS los clientes de forma permanente.\n\n'
+          '¿Estás seguro?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('SÍ, ELIMINAR TODO'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await _ctrl.limpiarTodo();
+    _limpiarFormulario();
+    _notificar('Base de datos limpiada', Colors.red);
+  }
+
+  // ─────────────────────────────── build ───────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final inactivos = _clientes.where((c) => !c.activo).length;
+    final esMovil = MediaQuery.of(context).size.width < 600;
+    final padding = esMovil ? 10.0 : 14.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestión de Clientes UCT'),
+        title: const Text(
+          'Gestión de Clientes UCT',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         centerTitle: true,
-        backgroundColor: const Color(0xFFB5D4F4),
+        backgroundColor: const Color(0xFF1A5C9A),
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          if (_ctrl.guardando)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           PopupMenuButton<String>(
             tooltip: 'Opciones',
+            icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
-              if (value == 'exportar') {
-                _exportarCSV();
-              } else if (value == 'orden_nombre') {
-                setState(() => _ordenActual = OrdenClientes.nombre);
-                _aplicarFiltros();
-              } else if (value == 'orden_fecha') {
-                setState(() => _ordenActual = OrdenClientes.fechaReciente);
-                _aplicarFiltros();
-              } else if (value == 'toggle_inactivos') {
-                setState(() => _mostrarInactivos = !_mostrarInactivos);
-                _aplicarFiltros();
+              switch (value) {
+                case 'exportar_todo':
+                  _exportarCSV();
+                  break;
+                case 'exportar_vip':
+                  _exportarCSV(filtroTipo: TipoCliente.vip);
+                  break;
+                case 'exportar_frecuente':
+                  _exportarCSV(filtroTipo: TipoCliente.frecuente);
+                  break;
+                case 'orden_fecha':
+                  _ctrl.setOrden(OrdenClientes.fechaReciente);
+                  break;
+                case 'orden_nombre':
+                  _ctrl.setOrden(OrdenClientes.nombre);
+                  break;
+                case 'toggle_inactivos':
+                  _ctrl.setMostrarInactivos(!_ctrl.mostrarInactivos);
+                  break;
+                case 'filtro_ninguno':
+                  _ctrl.setFiltroTipo(null);
+                  break;
+                case 'limpiar_bd':
+                  _confirmarLimpiarBD();
+                  break;
+                default:
+                  final tipo = TipoCliente.values.firstWhere(
+                    (t) => 'filtro_${t.name}' == value,
+                    orElse: () => TipoCliente.nuevo,
+                  );
+                  _ctrl.setFiltroTipo(tipo);
               }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'exportar', child: Text('Exportar CSV')),
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'exportar_todo',
+                child: Text('Exportar CSV — Todos'),
+              ),
+              const PopupMenuItem(
+                value: 'exportar_vip',
+                child: Text('Exportar CSV — Solo VIP'),
+              ),
+              const PopupMenuItem(
+                value: 'exportar_frecuente',
+                child: Text('Exportar CSV — Solo Frecuentes'),
+              ),
               const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'orden_fecha',
@@ -385,9 +351,39 @@ class _RegistroClientesPageState extends State<RegistroClientesPage> {
                 value: 'orden_nombre',
                 child: Text('Ordenar por nombre'),
               ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'filtro_ninguno',
+                child: Text('Ver todos los tipos'),
+              ),
+              ...TipoCliente.values.map(
+                (t) => PopupMenuItem(
+                  value: 'filtro_${t.name}',
+                  child: Row(
+                    children: [
+                      Icon(t.icono, size: 14, color: t.color),
+                      const SizedBox(width: 8),
+                      Text('Filtrar: ${t.etiqueta}'),
+                    ],
+                  ),
+                ),
+              ),
+              const PopupMenuDivider(),
               PopupMenuItem(
                 value: 'toggle_inactivos',
-                child: Text(_mostrarInactivos ? 'Ocultar inactivos' : 'Mostrar inactivos'),
+                child: Text(
+                  _ctrl.mostrarInactivos
+                      ? 'Ocultar inactivos'
+                      : 'Mostrar inactivos',
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'limpiar_bd',
+                child: Text(
+                  '⚠️ Limpiar BD (pruebas)',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
           ),
@@ -395,49 +391,69 @@ class _RegistroClientesPageState extends State<RegistroClientesPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: _cargando
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: _ctrl.cargando
               ? const Center(child: CircularProgressIndicator())
-              : Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      PanelFormulario(
-                        nombreCtrl: _nombreCtrl,
-                        rutCtrl: _rutCtrl,
-                        emailCtrl: _emailCtrl,
-                        errorNombre: _errorNombre,
-                        errorRut: _errorRut,
-                        errorEmail: _errorEmail,
-                        modoEdicion: _modoEdicion,
-                        onGuardar: _guardarFormulario,
-                        onCancelar: _modoEdicion ? _cancelarEdicion : null,
+              : CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, padding, padding, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            PanelFormulario(
+                              formKey:          _formKey,
+                              nombreCtrl:       _nombreCtrl,
+                              rutCtrl:          _rutCtrl,
+                              emailCtrl:        _emailCtrl,
+                              telefonoCtrl:     _telefonoCtrl,
+                              direccionCtrl:    _direccionCtrl,
+                              notasCtrl:        _notasCtrl,
+                              tipoSeleccionado: _tipoSeleccionado,
+                              onTipoChanged:    (t) => setState(() => _tipoSeleccionado = t),
+                              validarNombre:    (v) => Validadores.validarNombre(v ?? ''),
+                              validarRut:       (v) => Validadores.validarRut(v ?? ''),
+                              validarEmail:     (v) => Validadores.validarEmail(v ?? ''),
+                              validarTelefono:  (v) => Validadores.validarTelefono(v ?? ''),
+                              validarDireccion: (v) => Validadores.validarDireccion(v ?? ''),
+                              rutPreview:       _rutPreview,
+                              modoEdicion:      _modoEdicion,
+                              onGuardar:        _guardarFormulario,
+                              onCancelar:       _modoEdicion ? _limpiarFormulario : null,
+                            ),
+                            const SizedBox(height: 10),
+                            StatsRow(
+                              totalActivos:       _ctrl.totalActivos,
+                              totalInactivos:     _ctrl.totalInactivos,
+                              totalFiltrados:     _ctrl.totalFiltrados,
+                              crecimientoMensual: _ctrl.crecimientoMensual,
+                              distribucion:       _ctrl.distribucionTipos,
+                            ),
+                            const SizedBox(height: 8),
+                            BuscadorField(controller: _searchCtrl),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      StatsRow(
-                        total: _clientes.length,
-                        filtrados: _filtrados.length,
-                        inactivos: inactivos,
-                      ),
-                      const SizedBox(height: 8),
-                      BuscadorField(controller: _searchCtrl),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: _filtrados.isEmpty
-                            ? EstadoVacio(haClientes: _clientes.isNotEmpty)
+                    ),
+                    SliverFillRemaining(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding, 0, padding, padding),
+                        child: _ctrl.filtrados.isEmpty
+                            ? EstadoVacio(haClientes: _ctrl.todos.isNotEmpty)
                             : ListaClientes(
-                                clientes: _filtrados,
-                                onEditar: _iniciarEdicion,
-                                onDarDeBaja: _darDeBaja,
-                                onReactivar: _reactivar,
+                                clientes:     _ctrl.filtrados,
+                                onEditar:     _iniciarEdicion,
+                                onDarDeBaja:  _darDeBaja,
+                                onReactivar:  _reactivar,
                               ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
         ),
       ),
     );
   }
-}
+} // ← cierre de _RegistroClientesPageState

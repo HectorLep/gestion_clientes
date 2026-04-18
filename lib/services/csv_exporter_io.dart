@@ -5,9 +5,8 @@ Future<String?> exportCsvFile(String content, String fileName) async {
   final downloadsDir = await getDownloadsDirectory();
   final docsDir = await getApplicationDocumentsDirectory();
   final dir = downloadsDir ?? docsDir;
-
   final path = '${dir.path}/$fileName';
   final file = File(path);
-  await file.writeAsString(content);
+  await file.writeAsString(content, flush: true);
   return path;
 }
