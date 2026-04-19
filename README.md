@@ -11,8 +11,8 @@ Aplicación empresarial multiplataforma en Flutter desarrollada en pareja para l
 
 | Plataforma | Archivo | Instrucciones |
 |------------|---------|---------------|
-| 🪟 Windows | [gestion_clientes_windows.zip](https://github.com/HectorLep/gestion_clientes/releases/latest/download/gestion_clientes_windows.zip) | Extraer el ZIP completo y ejecutar `gestion_clientes.exe` |
-| 🤖 Android | [app-release.apk](https://github.com/HectorLep/gestion_clientes/releases/latest/download/app-release.apk) | Habilitar *Fuentes desconocidas* e instalar el APK |
+| 🪟 Windows | [gestion_clientes_windows.zip](https://github.com/HectorLep/gestion_clientes/raw/main/releases/gestion_clientes_windows.zip) | Extraer el ZIP completo y ejecutar `gestion_clientes.exe` |
+| 🤖 Android | [app-release.apk](https://github.com/HectorLep/gestion_clientes/raw/main/releases/app-release.apk) | Habilitar *Fuentes desconocidas* e instalar el APK |
 
 > ⚠️ **Windows:** el `.exe` solo no funciona. Debe ejecutarse desde la carpeta extraída junto a todos los `.dll`.
 
