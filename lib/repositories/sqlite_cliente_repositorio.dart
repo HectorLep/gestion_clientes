@@ -1,5 +1,8 @@
-import 'package:sqflite/sqflite.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/cliente.dart';
 import '../models/tipo_cliente.dart';
 import 'cliente_repositorio.dart';
@@ -17,8 +20,24 @@ class SqliteClienteRepositorio implements ClienteRepositorio {
   }
 
   Future<Database> _initDb() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, _dbName);
+    // ✅ Inicializar FFI para Windows y Linux
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
+    // ✅ Usar AppData/Local para evitar problemas con OneDrive
+    final String path;
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      final supportDir = await getApplicationSupportDirectory();
+      final dir = Directory(join(supportDir.path, 'gestion_clientes_uct'));
+      if (!await dir.exists()) await dir.create(recursive: true);
+      path = join(dir.path, _dbName);
+    } else {
+      // Android / iOS
+      final dbPath = await getDatabasesPath();
+      path = join(dbPath, _dbName);
+    }
 
     return openDatabase(
       path,
@@ -38,13 +57,9 @@ class SqliteClienteRepositorio implements ClienteRepositorio {
             activo        INTEGER NOT NULL DEFAULT 1
           )
         ''');
-        // Índices para búsqueda rápida
-        await db.execute(
-            'CREATE INDEX idx_email ON $_tabla (email)');
-        await db.execute(
-            'CREATE INDEX idx_activo ON $_tabla (activo)');
-        await db.execute(
-            'CREATE INDEX idx_tipo ON $_tabla (tipo)');
+        await db.execute('CREATE INDEX idx_email  ON $_tabla (email)');
+        await db.execute('CREATE INDEX idx_activo ON $_tabla (activo)');
+        await db.execute('CREATE INDEX idx_tipo   ON $_tabla (tipo)');
       },
     );
   }
@@ -64,17 +79,10 @@ class SqliteClienteRepositorio implements ClienteRepositorio {
   Future<void> guardarTodos(List<Cliente> clientes) async {
     final db = await _database;
     final batch = db.batch();
-
-    // Upsert completo: borra todo y reinserta
-    // Para producción real se haría upsert individual, pero aquí
-    // el controller ya maneja la lista completa en memoria.
     batch.delete(_tabla);
     for (final c in clientes) {
-      batch.insert(
-        _tabla,
-        _clienteToRow(c),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert(_tabla, _clienteToRow(c),
+          conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
@@ -84,8 +92,6 @@ class SqliteClienteRepositorio implements ClienteRepositorio {
     final db = await _database;
     await db.delete(_tabla);
   }
-
-  // ── Conversión ────────────────────────────────────────────
 
   Map<String, dynamic> _clienteToRow(Cliente c) => {
         'rut':           c.rut,
@@ -101,17 +107,17 @@ class SqliteClienteRepositorio implements ClienteRepositorio {
       };
 
   Cliente _rowToCliente(Map<String, dynamic> row) => Cliente(
-        rut:      row['rut'] as String,
-        nombre:   row['nombre'] as String,
-        email:    row['email'] as String,
-        telefono: row['telefono'] as String? ?? '',
+        rut:       row['rut'] as String,
+        nombre:    row['nombre'] as String,
+        email:     row['email'] as String,
+        telefono:  row['telefono'] as String? ?? '',
         direccion: row['direccion'] as String? ?? '',
-        notas:    row['notas'] as String? ?? '',
+        notas:     row['notas'] as String? ?? '',
         tipo: TipoCliente.values.firstWhere(
           (t) => t.name == (row['tipo'] as String? ?? ''),
           orElse: () => TipoCliente.nuevo,
         ),
-        fechaRegistro: DateTime.parse(row['fechaRegistro'] as String),
+        fechaRegistro:      DateTime.parse(row['fechaRegistro'] as String),
         ultimaModificacion: DateTime.parse(row['ultimaMod'] as String),
         activo: (row['activo'] as int) == 1,
       );
