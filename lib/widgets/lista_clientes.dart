@@ -16,6 +16,37 @@ class ListaClientes extends StatelessWidget {
     required this.onReactivar,
   });
 
+  // Versión sliver para usar dentro de CustomScrollView
+  static Widget toSliver({
+    required List<Cliente> clientes,
+    required void Function(Cliente) onEditar,
+    required void Function(Cliente) onDarDeBaja,
+    required void Function(Cliente) onReactivar,
+    required double paddingH,
+    required double paddingBottom,
+  }) {
+    return SliverPadding(
+      padding: EdgeInsets.fromLTRB(paddingH, 0, paddingH, paddingBottom),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final esUltimo = i == clientes.length - 1;
+            return Padding(
+              padding: EdgeInsets.only(bottom: esUltimo ? 0 : 8),
+              child: _ClienteTile(
+                cliente: clientes[i],
+                onEditar: () => onEditar(clientes[i]),
+                onDarDeBaja: () => onDarDeBaja(clientes[i]),
+                onReactivar: () => onReactivar(clientes[i]),
+              ),
+            );
+          },
+          childCount: clientes.length,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
@@ -128,9 +159,7 @@ class _ClienteTile extends StatelessWidget {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: TipoClienteHelper.colorFondo(c.tipo),
                               borderRadius: BorderRadius.circular(20),
@@ -142,11 +171,9 @@ class _ClienteTile extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  TipoClienteHelper.icono(c.tipo),
-                                  size: 12,
-                                  color: TipoClienteHelper.color(c.tipo),
-                                ),
+                                Icon(TipoClienteHelper.icono(c.tipo),
+                                    size: 12,
+                                    color: TipoClienteHelper.color(c.tipo)),
                                 const SizedBox(width: 4),
                                 Text(
                                   TipoClienteHelper.etiqueta(c.tipo),
@@ -162,28 +189,24 @@ class _ClienteTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'RUT: ${c.rutFormateado}',
-                        style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-                      ),
-                      Text(
-                        c.email,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-                      ),
-                      if (c.telefono.isNotEmpty)
-                        Text(
-                          'Tel: ${c.telefono}',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                        ),
-                      if (c.direccion.isNotEmpty)
-                        Text(
-                          c.direccion,
+                      Text('RUT: ${c.rutFormateado}',
+                          style: TextStyle(
+                              color: Colors.grey.shade700, fontSize: 12)),
+                      Text(c.email,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                        ),
+                          style: TextStyle(
+                              color: Colors.grey.shade700, fontSize: 12)),
+                      if (c.telefono.isNotEmpty)
+                        Text('Tel: ${c.telefono}',
+                            style: TextStyle(
+                                color: Colors.grey.shade600, fontSize: 12)),
+                      if (c.direccion.isNotEmpty)
+                        Text(c.direccion,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: Colors.grey.shade600, fontSize: 12)),
                       const SizedBox(height: 6),
                       Text(
                         'Registro: ${c.fechaFormateada}',
@@ -195,10 +218,9 @@ class _ClienteTile extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text(
-                        'Modificado: ${c.ultimaModificacionFormateada}',
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                      ),
+                      Text('Modificado: ${c.ultimaModificacionFormateada}',
+                          style: TextStyle(
+                              color: Colors.grey.shade500, fontSize: 11)),
                       if (c.notas.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
@@ -255,9 +277,7 @@ class _ClienteTile extends StatelessWidget {
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
+                                      horizontal: 7, vertical: 3),
                                   decoration: BoxDecoration(
                                     color: TipoClienteHelper.colorFondo(c.tipo),
                                     borderRadius: BorderRadius.circular(20),
@@ -269,11 +289,9 @@ class _ClienteTile extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        TipoClienteHelper.icono(c.tipo),
-                                        size: 11,
-                                        color: TipoClienteHelper.color(c.tipo),
-                                      ),
+                                      Icon(TipoClienteHelper.icono(c.tipo),
+                                          size: 11,
+                                          color: TipoClienteHelper.color(c.tipo)),
                                       const SizedBox(width: 4),
                                       Text(
                                         TipoClienteHelper.etiqueta(c.tipo),
@@ -290,19 +308,19 @@ class _ClienteTile extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'RUT: ${c.rutFormateado}  •  ${c.email}',
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                            ),
+                                'RUT: ${c.rutFormateado}  •  ${c.email}',
+                                style: TextStyle(
+                                    color: Colors.grey.shade600, fontSize: 12)),
                             if (c.telefono.isNotEmpty)
-                              Text(
-                                'Tel: ${c.telefono}',
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                              ),
+                              Text('Tel: ${c.telefono}',
+                                  style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 11)),
                             if (c.direccion.isNotEmpty)
-                              Text(
-                                c.direccion,
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                              ),
+                              Text(c.direccion,
+                                  style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 11)),
                             const SizedBox(height: 4),
                             Text(
                               'Registro: ${c.fechaFormateada}  •  Mod: ${c.ultimaModificacionFormateada}',

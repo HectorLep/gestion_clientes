@@ -11,8 +11,7 @@ class CsvService {
         : clientes.where((c) => c.tipo == filtroTipo).toList();
 
     final sb = StringBuffer();
-    sb.writeln('Nombre,RUT,Email,Teléfono,Dirección,Tipo,'
-        'Fecha Registro,Última Modificación,Estado,Notas');
+    sb.writeln('Nombre,RUT,Email,Teléfono,Dirección,Tipo,Estado,Fecha Registro,Última Modificación,Notas');
     for (final c in lista) {
       sb.writeln([
         _e(c.nombre),
@@ -21,9 +20,9 @@ class CsvService {
         _e(c.telefono),
         _e(c.direccion),
         _e(c.tipo.etiqueta),
+        _e(c.activo ? 'Activo' : 'Inactivo'),
         _e(c.fechaFormateada),
         _e(c.ultimaModificacionFormateada),
-        _e(c.activo ? 'Activo' : 'Inactivo'),
         _e(c.notas),
       ].map((v) => '"$v"').join(','));
     }
@@ -31,18 +30,25 @@ class CsvService {
   }
 
   static Future<String?> exportar(
-      List<Cliente> clientes, {TipoCliente? filtroTipo}) async {
+    List<Cliente> clientes, {
+    TipoCliente? filtroTipo,
+  }) async {
     final contenido = generar(clientes, filtroTipo: filtroTipo);
-    final sufijo = filtroTipo != null ? '_${filtroTipo.name}' : '';
-    final fileName =
-        'clientes_uct${sufijo}_${DateTime.now().millisecondsSinceEpoch}.csv';
-    return exportCsvFile(contenido, fileName);
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final fileName = 'clientes_uct_$ts.csv';
+    final rutaCompleta = await exportCsvFile(contenido, fileName);
+
+    if (rutaCompleta == null) return null;
+
+    // Devolver solo carpeta legible, no ruta cruda
+    final partes = rutaCompleta.split('/');
+    final idx = partes.indexOf('GestionClientes');
+    if (idx != -1) {
+      return 'Documentos/GestionClientes/$fileName';
+    }
+    return 'Download/$fileName';
   }
 
-  /// Escapa comillas y protege contra CSV Injection
-  static String _e(String value) {
-    var v = value.replaceAll('"', '""');
-    if (v.startsWith(RegExp(r'[=+\-@]'))) v = "'$v";
-    return v;
-  }
+  static String _e(String v) =>
+      v.replaceAll('"', '""').replaceAll(RegExp(r'^[=+\-@]'), "'");
 }

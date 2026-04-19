@@ -417,10 +417,10 @@ class _RegistroClientesPageState extends State<RegistroClientesPage> {
                               validarEmail:     (v) => Validadores.validarEmail(v ?? ''),
                               validarTelefono:  (v) => Validadores.validarTelefono(v ?? ''),
                               validarDireccion: (v) => Validadores.validarDireccion(v ?? ''),
-                              rutPreview:       _rutPreview,
-                              modoEdicion:      _modoEdicion,
-                              onGuardar:        _guardarFormulario,
-                              onCancelar:       _modoEdicion ? _limpiarFormulario : null,
+                              rutPreview:  _rutPreview,
+                              modoEdicion: _modoEdicion,
+                              onGuardar:   _guardarFormulario,
+                              onCancelar:  _modoEdicion ? _limpiarFormulario : null,
                             ),
                             const SizedBox(height: 10),
                             StatsRow(
@@ -437,23 +437,26 @@ class _RegistroClientesPageState extends State<RegistroClientesPage> {
                         ),
                       ),
                     ),
-                    SliverFillRemaining(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding, 0, padding, padding),
-                        child: _ctrl.filtrados.isEmpty
-                            ? EstadoVacio(haClientes: _ctrl.todos.isNotEmpty)
-                            : ListaClientes(
-                                clientes:     _ctrl.filtrados,
-                                onEditar:     _iniciarEdicion,
-                                onDarDeBaja:  _darDeBaja,
-                                onReactivar:  _reactivar,
-                              ),
+                    if (_ctrl.filtrados.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.all(padding),
+                          child: EstadoVacio(haClientes: _ctrl.todos.isNotEmpty),
+                        ),
+                      )
+                    else
+                      ListaClientes.toSliver(
+                        clientes:      _ctrl.filtrados,
+                        onEditar:      _iniciarEdicion,
+                        onDarDeBaja:   _darDeBaja,
+                        onReactivar:   _reactivar,
+                        paddingH:      padding,
+                        paddingBottom: padding,
                       ),
-                    ),
                   ],
                 ),
         ),
       ),
     );
   }
-} // ← cierre de _RegistroClientesPageState
+} // ← cierre _RegistroClientesPageState

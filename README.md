@@ -1,86 +1,106 @@
 # Gestión de Clientes UCT
 
-Aplicación empresarial multiplataforma en Flutter desarrollada en pareja para la **Actividad 2** — Sistema de registro y gestión de clientes.
+Aplicación empresarial multiplataforma en Flutter desarrollada en pareja para la
+**Actividad 2** — Sistema de registro y gestión de clientes.
 
-***
+---
 
 ## 🤝 Equipo de desarrollo
 
-| Miembro | GitHub |
-|---|---|
-| Héctor Lep | [@HectorLep](https://github.com/HectorLep) |
-| Agustín Vega | [@sonickiller39](https://github.com/sonickiller39) |
+| Miembro       | GitHub                                          |
+|---------------|-------------------------------------------------|
+| Héctor Lepio  | [@HectorLep](https://github.com/HectorLep)      |
+| Agustín Vega  | [@sonickiller39](https://github.com/sonickiller39) |
 
-***
+---
 
 ## 🎯 Descripción
 
-Sistema completo de gestión de clientes con soporte para **Android y Web**, que permite registrar, consultar, editar y exportar clientes con validación de datos chilenos (RUT módulo 11).
+Sistema completo de gestión de clientes con soporte para **Windows, Android y Web**
+(incluyendo el servidor Pillán UCT), que permite registrar, consultar, editar y exportar
+clientes con validación de datos chilenos (RUT módulo 11) y arquitectura desacoplada
+por capas.
 
-***
+---
 
 ## ✅ Funcionalidades
 
 ### Gestión de clientes
 - Registro con nombre, RUT, email, teléfono, dirección y notas
-- Clasificación por tipo: Nuevo, Frecuente, VIP, Inactivo
-- Edición de datos (RUT no modificable)
-- Baja con motivo opcional (soft delete)
+- Clasificación por tipo: Nuevo, Frecuente, VIP, Moroso
+- Edición de datos (RUT no modificable tras el registro)
+- Baja lógica con confirmación (**soft delete** — no se elimina el registro)
 - Reactivación de clientes dados de baja
 
 ### Búsqueda y filtros
-- Búsqueda en tiempo real con debounce (nombre, RUT, email)
+- Búsqueda en tiempo real con debounce de 300 ms (nombre, RUT, email)
 - Filtro por tipo de cliente
-- Orden por nombre o fecha de registro (más recientes)
+- Ordenamiento por nombre o fecha de registro (más recientes primero)
 - Mostrar/ocultar clientes inactivos
 
 ### Exportación
 - Exportación a CSV con todos los campos
-- Filtro de exportación por tipo (todos / solo VIP / solo frecuentes)
-- Protección contra CSV Injection (`=`, `+`, `-`, `@`)
-- Compatible con Web (descarga directa) y Android (almacenamiento local)
+- Protección contra **CSV Injection** (neutraliza prefijos `=`, `+`, `-`, `@`)
+- Detección automática de plataforma:
+  - **Web:** descarga directa en el navegador (`dart:html`)
+  - **Nativo:** guarda en carpeta de documentos del sistema (`dart:io`)
 
 ### Validación y UX
-- Validación de RUT chileno (módulo 11)
-- Formateo de RUT en tiempo real (`12.345.678-9`)
-- Unicidad de RUT y email
-- Estadísticas: activos, inactivos, filtrados, crecimiento mensual, distribución por tipo
-- Formulario con sección expandible para datos opcionales
-- Layout responsivo (móvil y escritorio)
+- Validación de RUT chileno con algoritmo **módulo 11** en tiempo real
+- Formateo automático de RUT (`12.345.678-9`) mientras se escribe
+- Unicidad de RUT y email con mensajes de error por campo
+- Estadísticas en tiempo real: activos, inactivos, filtrados
+- Estado vacío animado con acción sugerida
+- Layout responsivo (móvil y escritorio), ancho máximo de 800 px
 
-***
+---
 
 ## 🏗️ Arquitectura
 
 ```text
 lib/
-├── controllers/         # Lógica de negocio y estado (ClientesController)
-├── models/              # Entidades: Cliente, TipoCliente
-├── repositories/        # Acceso a persistencia (SharedPreferences)
-├── services/            # CsvService + exportación por plataforma
-│   ├── csv_exporter_io.dart      # Android / Desktop
-│   ├── csv_exporter_web.dart     # Web
-│   └── csv_exporter_stub.dart    # Fallback
-├── utils/               # Validadores (RUT módulo 11, email, nombre)
-├── pages/               # RegistroClientesPage
-└── widgets/             # PanelFormulario, ListaClientes, StatsRow,
-                         # BuscadorField, EstadoVacio
+├── main.dart                      # Punto de entrada; configura tema global
+├── models/
+│   └── cliente.dart               # Entidad Cliente + serialización JSON
+├── repositories/
+│   ├── cliente_repositorio.dart   # Interfaz abstracta de persistencia
+│   ├── cliente_repo_sqlite.dart   # Implementación SQLite (nativo)
+│   └── cliente_repo_prefs.dart    # Implementación SharedPreferences (web)
+├── controllers/
+│   └── clientes_controller.dart   # Lógica: filtrado, debounce, orden
+├── services/
+│   ├── csv_service.dart           # Generación y descarga de CSV
+│   ├── csv_exporter_stub.dart     # Interfaz stub multi-plataforma
+│   ├── csv_exporter_io.dart       # Exportación nativa (dart:io)
+│   └── csv_exporter_web.dart      # Exportación web (dart:html)
+├── utils/
+│   └── validadores.dart           # Módulo 11, nombre, email
+├── widgets/
+│   ├── panel_formulario.dart      # Formulario de registro/edición
+│   ├── stats_row.dart             # Fila de indicadores estadísticos
+│   ├── buscador_field.dart        # Campo de búsqueda con debounce
+│   ├── lista_clientes.dart        # Lista con tarjetas por cliente
+│   └── estado_vacio.dart          # Estado vacío animado
+└── pages/
+    └── registro_clientes_page.dart  # Pantalla principal
 ```
 
-**Persistencia:** `SharedPreferences` (arquitectura lista para migrar a SQLite)  
-**Plataformas:** Android · Web · Desktop  
-**Estado:** `ChangeNotifier` (sin dependencias externas de estado)
+**Patrón:** MVC modificado con Patrón Repositorio  
+**Persistencia nativa:** SQLite vía `sqflite`  
+**Persistencia web:** `SharedPreferences` (`local_storage`)  
+**Plataformas:** Windows · Android · Web (Chrome / Pillán UCT)  
+**Estado:** `StatefulWidget` nativo — sin dependencias externas de gestión de estado
 
-***
+---
 
 ## 🔒 Seguridad
 
 - Validación de RUT chileno con algoritmo módulo 11
-- Unicidad de RUT y email por base de datos
+- Unicidad de RUT y email por repositorio
 - Protección contra CSV Injection en exportación
-- Sin almacenamiento de datos sensibles en texto plano
+- Sin almacenamiento de contraseñas ni datos sensibles en texto plano
 
-***
+---
 
 ## 🧪 Testing
 
@@ -88,43 +108,57 @@ lib/
 flutter test
 ```
 
-Los tests cubren validadores (RUT, email, nombre) y lógica del repositorio.
+Los tests cubren los validadores (RUT, email, nombre) con 24 pruebas unitarias aprobadas.
 
-***
+---
 
-## 🚀 Instalación
+## 🚀 Instalación y Ejecución
+
+### Requisitos previos
+
+- Flutter SDK 3.0.0 o superior
+- Dart 3.x (incluido con Flutter)
+- Para Android: Android SDK con Command-line Tools
+
+### Pasos
 
 ```bash
+# 1. Clonar el repositorio
 git clone https://github.com/HectorLep/gestion_clientes.git
 cd gestion_clientes
+
+# 2. Instalar dependencias
 flutter pub get
 
-# Ejecutar en Android
-flutter run -d android
+# 3. Verificar el entorno
+flutter doctor -v
 
-# Ejecutar en Web
-flutter run -d chrome
+# 4. Ejecutar según plataforma
+flutter run -d windows   # Escritorio Windows (SQLite)
+flutter run -d chrome    # Navegador web (SharedPreferences)
+flutter run -d android   # Dispositivo Android (SQLite)
 
-# Compilar APK
+# 5. Compilar APK de producción
 flutter build apk
+# Salida: build/app/outputs/flutter-apk/app-release.apk
 ```
+
+> **Tip:** Para ver los dispositivos disponibles ejecuta `flutter devices`.
 
 ### Dependencias principales
 
 ```yaml
-shared_preferences: ^2.5.3
-path_provider: ^2.1.5
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
 ```
 
-***
-
-## 📸 Demo
-
-*(Agregar capturas de pantalla o enlace a video cuando estén disponibles)*
-
-***
+---
 
 ## 🎓 Contexto académico
 
 Proyecto desarrollado para la asignatura de **Desarrollo de Aplicaciones Empresariales**  
-Ingeniería Civil en Informática — Universidad Católica de Temuco
+Ingeniería Civil en Informática — Universidad Católica de Temuco  
+Grupo 23 · Actividad 2 · 2026
