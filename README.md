@@ -24,8 +24,7 @@ Aplicación empresarial multiplataforma en Flutter desarrollada en pareja para l
 ![App Windows](https://github.com/HectorLep/gestion_clientes/blob/main/assets/images/windows_app.png?raw=true)
 
 ### 🤖 Android
-![App Android](https://github.com/HectorLep/gestion_clientes/blob/main/assets/images/android_app.jpeg?raw=true)
-
+<img src="https://github.com/HectorLep/gestion_clientes/blob/main/assets/images/android_app.jpeg?raw=true" width="300" alt="App Android"/>
 ---
 
 ## 🤝 Equipo de desarrollo
