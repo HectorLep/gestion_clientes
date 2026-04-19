@@ -12,19 +12,27 @@ Aplicación empresarial multiplataforma en Flutter desarrollada en pareja para l
 | Plataforma | Archivo | Instrucciones |
 |------------|---------|---------------|
 | 🪟 Windows | [gestion_clientes_windows.zip](https://github.com/HectorLep/gestion_clientes/raw/main/releases/gestion_clientes_windows.zip) | Extraer el ZIP completo y ejecutar `gestion_clientes.exe` |
-| 🤖 Android | [app-release.apk](https://github.com/HectorLep/gestion_clientes/raw/main/releases/app-release.apk) | Habilitar *Fuentes desconocidas* e instalar el APK |
+| 🤖 Android | [app-release.apk](https://github.com/HectorLep/gestion_clientes/releases/latest/download/app-release.apk) | Habilitar *Fuentes desconocidas* e instalar el APK |
 
 > ⚠️ **Windows:** el `.exe` solo no funciona. Debe ejecutarse desde la carpeta extraída junto a todos los `.dll`.
 
 ---
 
-## 🤝 Equipo de desarrollo
+## 🖼️ Capturas de pantalla
+
+### 🪟 Windows
+![App Windows](https://github.com/HectorLep/gestion_clientes/blob/main/assets/images/windows_app.png?raw=true)
+
+### 🤖 Android
+![App Android](https://github.com/HectorLep/gestion_clientes/blob/main/assets/images/android_app.jpeg?raw=true)
+
+---
 
 ## 🤝 Equipo de desarrollo
 
-| Miembro       | GitHub                                          |
-|---------------|-------------------------------------------------|
-| Héctor Lepio  | [@HectorLep](https://github.com/HectorLep)      |
+| Miembro       | GitHub                                            |
+|---------------|---------------------------------------------------|
+| Héctor Lepio  | [@HectorLep](https://github.com/HectorLep)        |
 | Agustín Vega  | [@sonickiller39](https://github.com/sonickiller39) |
 
 ---
@@ -101,7 +109,7 @@ lib/
 ```
 
 **Patrón:** MVC modificado con Patrón Repositorio  
-**Persistencia nativa:** SQLite vía `sqflite`  
+**Persistencia nativa:** SQLite vía `sqflite_common_ffi`  
 **Persistencia web:** `SharedPreferences` (`local_storage`)  
 **Plataformas:** Windows · Android · Web (Chrome / Pillán UCT)  
 **Estado:** `StatefulWidget` nativo — sin dependencias externas de gestión de estado
@@ -168,6 +176,8 @@ dependencies:
     sdk: flutter
   shared_preferences: ^2.5.3
   path_provider: ^2.1.5
+  sqflite_common_ffi: ^2.3.4
+  path: ^1.9.0
 ```
 
 ---
